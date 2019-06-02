@@ -24,7 +24,7 @@ let publicPath = Path.GetFullPath "../Client/public"
 
 let port =
     "SERVER_PORT"
-    |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 5005us
+    |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
 let getInitCounter() : Task<Counter> = task { return { Value = 42 } }
 
@@ -119,29 +119,20 @@ let uiHook =
 
 let webApp = choose [
     route "/api/uihook" >=> uiHook
-]
-// ] {
-//     get "/api/init" (fun next ctx ->
-//         task {
-//             let! counter = getInitCounter()
-//             return! json counter next ctx
-//         })
-//     get "/" (fun next ctx ->
-//         task {
-//             let counter = "hello world"
-//             return! json counter next ctx
-//         })
-//     post "/" (fun next ctx ->
-//         task {
 
-//         })
-// }
+    router { get "/api/init" (fun next ctx ->
+        task {
+            let! counter = getInitCounter()
+            return! json counter next ctx
+        })
+    }
+]
 
 let app = application {
     url ("http://0.0.0.0:" + port.ToString() + "/")
     use_router webApp
     memory_cache
-    //use_static publicPath
+    use_static publicPath
     use_json_serializer(Thoth.Json.Giraffe.ThothSerializer())
     use_gzip
 }
