@@ -30,18 +30,18 @@ let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
         let body = RequestBody.Parse(bodyjson)
         let counterVal = Option.defaultValue 15 body.ClientState.Counter
 
-        printf "Body: %A" bodyjson
+        printfn "Body: %A" body
         let response = """<Page>
               <P>Counter: 0</P>
-              <Button>deploy all the things</Button>
+              <Button action="count">deploy all the things</Button>
               <P>Email: c</P>
               <P>ID: undefined</P>
               <P>Username: c</P>
               <P>Name: undefined</P>
               <Img src="https://api.checkface.ml/api/c?dim=300" />
-              <P><Link href="https://"></Link></P>
+              <P><Link href="https://"></Link></P><ProjectSwitcher />
               </Page>"""
-        return! Successful.OK response next ctx
+        return! ctx.WriteTextAsync response
     }
 
 let rootApp =
@@ -57,7 +57,6 @@ let rootApp =
         OPTIONS
             >=> setStatusCode 200
     ]
-    //>=>
 
 
 let webApp = choose [
