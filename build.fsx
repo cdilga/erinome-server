@@ -14,6 +14,9 @@ open Fake.IO
 
 let serverPath = Path.getFullName "./src/Server"
 let clientPath = Path.getFullName "./src/Client"
+let erinomeBuilderPath = Path.getFullName "./src/ErinomeBuilder"
+let erinomeTestsPath = Path.getFullName "./src/ErinomeTests"
+
 let clientDeployPath = Path.combine clientPath "deploy"
 let deployDir = Path.getFullName "./deploy"
 
@@ -71,6 +74,8 @@ Target.create "InstallClient" (fun _ ->
 )
 
 Target.create "Build" (fun _ ->
+    runDotNet "build" erinomeBuilderPath
+    runDotNet "build" erinomeTestsPath
     runDotNet "build" serverPath
     runTool yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
 )
@@ -97,6 +102,16 @@ Target.create "Run" (fun _ ->
 
     tasks
     |> Async.Parallel
+    |> Async.RunSynchronously
+    |> ignore
+)
+
+Target.create "WatchTests" (fun _ ->
+    let tests = async {
+        runDotNet "watch run" erinomeTestsPath
+    }
+
+    tests
     |> Async.RunSynchronously
     |> ignore
 )
@@ -146,5 +161,8 @@ open Fake.Core.TargetOperators
 "Clean"
     ==> "InstallClient"
     ==> "Run"
+
+"Clean"
+    ==> "WatchTests"
 
 Target.runOrDefaultWithArguments "Build"
