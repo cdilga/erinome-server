@@ -4,6 +4,7 @@ module Erinome
 open System
 open FSharp.Data
 open System.IO
+open System.Text.RegularExpressions
 
 type Ipynb = JsonProvider<"https://drive.google.com/uc?export=download&id=1034rXX-xPwDbY-yvgmmXWGBBa3pE7-Wf">
 
@@ -15,6 +16,17 @@ type CodeCell = {
 type Endpoint =
     | Get of string
     | Post of string
+
+type SliderEl = {
+    min: int
+    max: int
+    step: int
+    defaultValue: int
+}
+
+
+type ColabFormElement =
+    | Slider of SliderEl
 
 let getTempDir() =
    let tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
@@ -28,8 +40,14 @@ let (|Prefix|_|) (p:string) (s:string) =
     else
         None
 
-// type ParameterRegex = Regex< @"^\s*(?<VariableName>\w*)\s*=\s*(?<DefaultValue>.*)\s*#@param(?<Options>.*)$" >
-// let parameterRegex = ParameterRegex()
+let parameterRegex =
+    Regex(@"^\s*(?<VariableName>\w*)\s*=\s*(?<DefaultValue>.*)\s*#@param(?<Options>.*)$",
+        (RegexOptions.Compiled ||| RegexOptions.IgnoreCase))
+
+let (|ParamRegex|_|) input =
+        let m = parameterRegex.Match(input)
+        if m.Success then Some(List.tail [ for g in m.Groups -> g.Value ])
+        else None
 
 let lineEndpoint (line:string) =
     match line.TrimStart() with
@@ -37,18 +55,21 @@ let lineEndpoint (line:string) =
     | Prefix "#@POST" path -> Some (Post (path.Trim()))
     | _ -> None
 
-let lineParameter line =
-    // let ll = parameterRegex.TypedMatch(line)
-    // if ll.Success
-    // then
-        line
-    // else
-        // line
+let colabElementOptionsParser variableName defaultValue options =
+    Some 0
+
+let colabFormLine optionsParser line =
+    match line with
+    | ParamRegex [ variableName; defaultValue; options ] ->
+        optionsParser (variableName.Trim()) (defaultValue.Trim()) (options.Trim())
+    | _ ->
+        None
+
 
 let generateEndpointCode endpoint cell =
     let paramss =
         cell.Lines
-        |> List.map lineParameter
+        |> List.map (colabFormLine colabElementOptionsParser)
     printfn "Params: %A" paramss
     String.Join('\n', cell.Lines)
 
