@@ -28,33 +28,31 @@ type RequestBody = JsonProvider<"response.json", SampleIsList = true>
 
 let page = tag "Page"
 let link = tag "Link"
-// let fPf = sprintf >> str >> (fun s -> p [] [s])
+let p = tag "P"
+let button = tag "Button"
+let input = tag "Input"
+let box = tag "Box"
+let img = tag "Image"
+let _display = attr "display"
 
 let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
     task {
         let! bodyjson = ctx.ReadBodyFromRequestAsync()
         let body = RequestBody.Parse(bodyjson)
         let counterVal = Option.defaultValue 15 body.ClientState.Counter
-
+        printfn "%A" body.ClientState.Counter
         printfn "Body: %A" body
-        let response = """<Page>
-              <P>Counter: </P>
-              <Button action="count">deploy all the things</Button>
-              <P>Email: c</P>
-              <P>ID: undefined</P>
-              <P>Username: c</P>
-              <P>Name: undefined</P>
-              <Img src="https://api.checkface.ml/api/c?dim=300" />
-              <P><Link href="https://"></Link></P><ProjectSwitcher />
-              </Page>"""
-        let a = sprintf "asdf %s"
-        let sdf = page [] [
-            // fPf "Counter: %i" counterVal
+        let response = page [] [
             p [] [str (sprintf "Counter: %i" counterVal)]
-
+            button [_action "count"] [str (sprintf "Deploy a thing")]
+            p [] [str (sprintf "Email: %s" body.User.Email)]
+            p [] [str (sprintf "ID: %s" body.User.Id)]
+            p [] [str (sprintf "Username: %s" body.User.Username)]
+            p [] [link [ _href (sprintf "https://%s" body.InstallationUrl)] [str (sprintf "%s" body.InstallationUrl)]]
+            box [_display "none"] [input [_name "counter"; _type "hidden"; _value (string (counterVal + 1))] []]
         ]
 
-        return! ctx.WriteTextAsync <| renderHtmlNode sdf
+        return! ctx.WriteTextAsync <| renderHtmlNode response
     }
 
 let uiHook =
