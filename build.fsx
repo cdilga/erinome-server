@@ -108,7 +108,7 @@ Target.create "Run" (fun _ ->
 
 Target.create "WatchTests" (fun _ ->
     let tests = async {
-        runDotNet "watch run" erinomeTestsPath
+        runDotNet "watch run -- WatchTests" erinomeTestsPath
     }
 
     tests
