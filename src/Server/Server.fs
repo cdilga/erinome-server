@@ -10,6 +10,8 @@ open Shared
 open Giraffe.Core
 open Microsoft.AspNetCore.Http
 open FSharp.Data
+open Giraffe.GiraffeViewEngine
+open System.Text
 
 
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
@@ -24,6 +26,10 @@ let getInitCounter() : Task<Counter> = task { return { Value = 42 } }
 
 type RequestBody = JsonProvider<"response.json", SampleIsList = true>
 
+let page = tag "Page"
+let link = tag "Link"
+// let fPf = sprintf >> str >> (fun s -> p [] [s])
+
 let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
     task {
         let! bodyjson = ctx.ReadBodyFromRequestAsync()
@@ -32,7 +38,7 @@ let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
 
         printfn "Body: %A" body
         let response = """<Page>
-              <P>Counter: 0</P>
+              <P>Counter: </P>
               <Button action="count">deploy all the things</Button>
               <P>Email: c</P>
               <P>ID: undefined</P>
@@ -41,13 +47,18 @@ let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
               <Img src="https://api.checkface.ml/api/c?dim=300" />
               <P><Link href="https://"></Link></P><ProjectSwitcher />
               </Page>"""
-        return! ctx.WriteTextAsync response
+        let a = sprintf "asdf %s"
+        let sdf = page [] [
+            // fPf "Counter: %i" counterVal
+            p [] [str (sprintf "Counter: %i" counterVal)]
+
+        ]
+
+        return! ctx.WriteTextAsync <| renderHtmlNode sdf
     }
 
-let rootApp =
-    route "/"
-
-    >=> setHttpHeader "Access-Control-Allow-Origin" "*"
+let uiHook =
+    setHttpHeader "Access-Control-Allow-Origin" "*"
     >=> setHttpHeader "Access-Control-Allow-Methods" "GET, POST, DELETE, OPTIONS"
     >=> setHttpHeader "Access-Control-Allow-Headers" "Authorization, Accept, Content-Type"
     >=> choose [
@@ -60,8 +71,7 @@ let rootApp =
 
 
 let webApp = choose [
-    route "/foo" >=> text "Foo"
-    rootApp
+    route "/api/uihook" >=> uiHook
 ]
 // ] {
 //     get "/api/init" (fun next ctx ->
