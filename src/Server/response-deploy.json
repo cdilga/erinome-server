@@ -1,0 +1,39 @@
+{
+    "version": 2,
+    "id": "dpl_FiRrs1soYU6PeP3fzKHPqgvv7oQY",
+    "url": "f-deployment-test-p9rdiuggp.now.sh",
+    "name": "f-deployment-test",
+    "meta": {},
+    "plan": "free",
+    "public": true,
+    "ownerId": "bYnsvYSNTOCvx2CNJB8N6AnH",
+    "readyState": "INITIALIZING",
+    "createdAt": 1559463123424,
+    "createdIn": "syd1",
+    "regions": [
+        "syd1"
+    ],
+    "builds": [
+        {
+            "src": "*.js",
+            "use": "@now/node"
+        },
+        {
+            "src": "*.html",
+            "use": "@now/static"
+        },
+        {
+            "src": "*.css",
+            "use": "@now/static"
+        }
+    ],
+    "routes": null,
+    "env": [],
+    "target": null,
+    "build": {
+        "env": []
+    },
+    "alias": [
+        "f-deployment-test.cdilga.now.sh"
+    ]
+}
