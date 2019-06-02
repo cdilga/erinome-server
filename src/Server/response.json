@@ -1,0 +1,42 @@
+[{
+    "query": {},
+    "action": "view",
+    "clientState": {},
+    "token": "token",
+    "slug": "my-app",
+    "configurationId": "confId",
+    "integrationId": "integrationId",
+    "teamId": null,
+    "user": {
+        "id": "userId",
+        "username": "username",
+        "email": "user@example.com",
+        "name": "user name",
+        "profiles": []
+    },
+    "team": null,
+    "project": null,
+    "projectId": null,
+    "installationUrl": "https://zeit.co/dashboard/integrations/integrationId"
+},
+{
+    "query": {},
+    "action": "view",
+    "clientState": { "counter": 42 },
+    "token": "token",
+    "slug": "my-app",
+    "configurationId": "confId",
+    "integrationId": "integrationId",
+    "teamId": null,
+    "user": {
+        "id": "userId",
+        "username": "username",
+        "email": "user@example.com",
+        "name": "user name",
+        "profiles": []
+    },
+    "team": null,
+    "project": null,
+    "projectId": null,
+    "installationUrl": "https://zeit.co/dashboard/integrations/integrationId"
+}]
