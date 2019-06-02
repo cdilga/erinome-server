@@ -15,6 +15,7 @@ open Giraffe.GiraffeViewEngine
 open System.Text
 open System.IO
 open System.Text
+open Erinome
 open HttpFs.Client
 
 
@@ -27,6 +28,7 @@ let port =
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
 let getInitCounter() : Task<Counter> = task { return { Value = 42 } }
+let getInitCounterHappy() : Task<Counter> = task { return { Value = beHappy 16 } }
 
 type RequestBody = JsonProvider<"response.json", SampleIsList = true>
 type DeployBody = JsonProvider<"response-deploy.json">
@@ -125,6 +127,13 @@ let webApp = choose [
     router { get "/api/init" (fun next ctx ->
         task {
             let! counter = getInitCounter()
+            return! json counter next ctx
+        })
+    }
+
+    router { get "/api/behappy" (fun next ctx ->
+        task {
+            let! counter = getInitCounterHappy()
             return! json counter next ctx
         })
     }
