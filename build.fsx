@@ -30,6 +30,7 @@ let platformTool tool winTool =
 
 let nodeTool = platformTool "node" "node.exe"
 let yarnTool = platformTool "yarn" "yarn.cmd"
+let gcloudTool = platformTool "gcloud" "gcloud.cmd"
 
 let runTool cmd args workingDir =
     let arguments = args |> String.split ' ' |> Arguments.OfArgs
@@ -126,6 +127,9 @@ Target.create "Docker" (fun _ ->
 
 
 
+Target.create "Deploy" (fun _ ->
+    runTool gcloudTool "app deploy --quiet" "."
+)
 
 
 open Fake.Core.TargetOperators
@@ -136,6 +140,8 @@ open Fake.Core.TargetOperators
     ==> "Bundle"
     ==> "Docker"
 
+"Bundle"
+    ==> "Deploy"
 
 "Clean"
     ==> "InstallClient"
