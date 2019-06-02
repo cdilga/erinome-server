@@ -115,8 +115,8 @@ Target.create "Bundle" (fun _ ->
     Shell.copyDir publicDir clientDeployPath FileFilter.allFiles
 )
 
-let dockerUser = "safe-template"
-let dockerImageName = "safe-template"
+let dockerUser = "cdilga"
+let dockerImageName = "erinome-server"
 let dockerFullName = sprintf "%s/%s" dockerUser dockerImageName
 
 Target.create "Docker" (fun _ ->
