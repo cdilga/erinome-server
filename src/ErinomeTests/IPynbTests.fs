@@ -16,13 +16,13 @@ let tests =
         testCase "GET endpoint" <| fun _ ->
           let line = "  #@GET   /path   "
           let endpoint = lineEndpoint line
-          let expected = Some (Get "/path")
+          let expected = Some { path = "/path"; kind = Get }
           Expect.equal endpoint expected "Should be /path endpoint"
 
         testCase "POST endpoint" <| fun _ ->
           let line = "  #@POST/api/path.thing"
           let endpoint = lineEndpoint line
-          let expected = Some (Post "/api/path.thing")
+          let expected = Some { path = "/api/path.thing"; kind = Post }
           Expect.equal endpoint expected "Should get post endpoint"
     ]
 
@@ -67,26 +67,48 @@ let tests =
 
         let code = generateServer [cell1; cell2]
         let expected = String.Join('\n', [
+            "#Erinome Function Variants"
+            "erinomeBuffer = ''"
+            ""
+            "def erinomeDisplay(x):"
+            "    global erinomeBuffer"
+            "    erinomeBuffer = erinomeBuffer + str(x)"
+            "    return"
+            ""
             "#Cell 1"
             "c = 17 #@param {type:\"slider\", min:4, max:12, step:1}"
             ""
             "#Cell 2:endpoint"
-            "#@GET /add5"
-            "a = 5"
-            "b = 16 #@param {type:\"slider\", min:10, max:100, step:4}"
-            "display(a + b)"
+            "def add5():"
+            "    #@GET /add5"
+            "    a = 5"
+            "    global b"
+            "    erinomeDisplay(a + b)"
+            "    return"
             ""
             "#GeneratedHandler"
             "from http.server import BaseHTTPRequestHandler"
-            "from urllib.parse import urlparse"
-            ""
+            "import urllib.parse as urlparse"
             "class handler(BaseHTTPRequestHandler):"
-            "  def go_GET(self):"
-            "    self.send_response(200)"
-            "    self.send_header('Content-type','text/plain')"
-            "    self.end_headers()"
-            "    message = 'hello from erinome"
-            "    self.wfile.write(message.encode())"
+            ""
+            "   def do_GET(self):"
+            "       self.send_response(200)"
+            "       self.send_header('Content-type','text/plain')"
+            "       self.end_headers()"
+            "       parsed = urlparse.urlparse(self.path)"
+            "       parsedQuery = urlparse.parse_qs(parsed.query)"
+            "       urlPath = parsed.path"
+            "       global erinomeBuffer"
+            "       erinomeBuffer = '' # reset output"
+            "       if urlPath == '/add5':"
+            "           global b"
+            "           b = 16"
+            "           if parsedQuery['b']: b = int(parsedQuery['b'][0])"
+            "           add5()"
+            ""
+            "       message = erinomeBuffer"
+            "       self.wfile.write(message.encode())"
+            "       return"
         ])
 
 

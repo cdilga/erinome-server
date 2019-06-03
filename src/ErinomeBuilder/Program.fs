@@ -37,6 +37,12 @@ type ColabFormElement<'a> = {
     elementOptions: 'a
 }
 
+type ErinomeFunctionVariant = {
+    colabFunction: string
+    erinomeFunction: string
+    functionDefinition: string list
+}
+
 let getTempDir() =
    let tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
    Directory.CreateDirectory tempDirectory |> ignore
@@ -86,6 +92,25 @@ let colabFormLine optionsParser line =
     | _ ->
         None
 
+let erinomeFunctionVariants = [
+    {
+        colabFunction = "display"
+        erinomeFunction = "erinomeDisplay"
+        functionDefinition = [
+            "def erinomeDisplay(x):"
+            "    global erinomeBuffer"
+            "    erinomeBuffer = erinomeBuffer + str(x)"
+            "    return"
+        ]
+    }
+]
+
+let makeGlobalParam line =
+    let param = colabFormLine colabElementOptionsParser line
+    match param with
+    | Some { variableName = name; } -> sprintf "global %s" name
+    | _ -> line
+
 
 let generateEndpointCode endpoint cell =
     let paramss =
@@ -95,30 +120,45 @@ let generateEndpointCode endpoint cell =
     let cellComment = sprintf "#Cell %d:endpoint" cell.CellNumber
     let pp = endpoint.path.Replace("/", "")
     let defin = sprintf "def %s():" pp
-    let lines = List.map (fun l -> "    " + l) cell.Lines
-    cellComment::defin::lines
+    let lines =
+        cell.Lines
+        |> List.map makeGlobalParam
+        |> List.map (fun l -> "    " + l)
+    cellComment::defin::lines @ ["    return"]
 
 let cellEndpoint cell =
-    cell.Lines
-    |> List.choose lineEndpoint
-    |> List.tryLast
+    let ep =
+        cell.Lines
+        |> List.choose lineEndpoint
+        |> List.tryLast
+    match ep with
+    | Some endpoint -> Some (cell, endpoint)
+    | None -> None
 
 let generateCode cell =
     match cellEndpoint cell with
     | None ->
         let cellComment = sprintf "#Cell %d" cell.CellNumber
         cellComment::cell.Lines
-    | Some endpoint ->
+    | Some (cell, endpoint) ->
         generateEndpointCode endpoint cell
 
 let getPaths cells =
     cells
     |> List.choose cellEndpoint
-    |> List.map (fun e -> e.path)
+    |> List.map (fun (_, ep) -> ep.path)
 
-let genEndpoints ep = [
+let genEndpoints cell ep = [
     let p = ep.path
-    yield sprintf "       if urlPath == %s:" p
+    yield sprintf "       if urlPath == '%s':" p
+    let paramss =
+        cell.Lines
+        |> List.choose (colabFormLine colabElementOptionsParser)
+    for ps in paramss do
+        let name = ps.variableName
+        yield sprintf "           global %s" name
+        yield sprintf "           %s = %s" name ps.defaultValue
+        yield sprintf "           if '%s' in parsedQuery: %s = int(parsedQuery['%s'][0])" name name name
     let pp = p.Replace("/", "")
     yield sprintf "           %s()" pp
     yield ""
@@ -126,36 +166,47 @@ let genEndpoints ep = [
 
 let generateHandlerClass endpoints =
     [
-        yield "buffer = ''"
-        yield "def disp(x):"
-        yield "    buffer = buffer + str(x)"
+        yield ""
+        yield "#GeneratedHandler"
         yield "from http.server import BaseHTTPRequestHandler"
-        yield "from urllib.parse import urlparse"
+        yield "import urllib.parse as urlparse"
         yield "class handler(BaseHTTPRequestHandler):"
         yield ""
         yield "   def do_GET(self):"
-        yield "       buffer = ''"
         yield "       self.send_response(200)"
         yield "       self.send_header('Content-type','text/plain')"
         yield "       self.end_headers()"
-        yield "       parsed = urlparse(self.path)"
+        yield "       parsed = urlparse.urlparse(self.path)"
+        yield "       parsedQuery = urlparse.parse_qs(parsed.query)"
         yield "       urlPath = parsed.path"
-        for ep in endpoints do
-            for s in genEndpoints ep do
+        yield "       global erinomeBuffer"
+        yield "       erinomeBuffer = '' # reset output"
+        for cell, ep in endpoints do
+            for s in genEndpoints cell ep do
                 yield s
-        yield "       # message = cow.Cowacter().milk('Get from: ' + str(urlPath))"
-        yield "       message = buffer"
+        yield "       message = erinomeBuffer"
         yield "       self.wfile.write(message.encode())"
         yield "       return"
     ]
 
+let useErinomeVariants line:string =
+    List.fold (fun l f -> l.Replace(f.colabFunction, f.erinomeFunction)) line erinomeFunctionVariants
+
+let erinomeFuncSrc =
+    let source =
+        erinomeFunctionVariants
+        |> List.collect (fun f -> ""::f.functionDefinition)
+    "#Erinome Function Variants"::"erinomeBuffer = ''"::source
 
 let generateServer (cells:CodeCell list) =
-    cells
-    |> List.map generateCode
-    |> List.mapi (fun i x -> if i > 0 then ""::x else x)
-    |> List.collect id
-    |> fun x -> String.Join('\n', x)
+    let userCode =
+        cells
+        |> List.map (generateCode >> (fun x -> ""::x))
+        |> List.collect id
+        |> List.map useErinomeVariants
+    let handler = (generateHandlerClass <| List.choose cellEndpoint cells)
+
+    Seq.concat [erinomeFuncSrc; userCode; handler] |> fun x -> String.Join('\n', x)
 
 let shareUrlRegex = compileRegex @"drive\/(.*?)[?#$]"
 
@@ -183,21 +234,5 @@ let generateServerFromShareUrl nbUrl = async {
     | None ->
         return Error "Invalid drive share url - make sure it is saved on google drive"
 }
-
-// let main argv =
-//     let ret =
-//         match List.ofArray argv with
-//         | [] ->
-//             printfn "Please provide file name of notebook"
-//             1
-//         | uri::[] ->
-//             Async.RunSynchronously <| useNotebook uri
-//         | _ ->
-//             printfn "Should only have one argument"
-//             2
-
-//     printfn "Return code: %A - Press any key to exit" ret
-//     System.Console.ReadKey() |> ignore
-//     ret
 
 let beHappy a = a + 5

@@ -44,8 +44,14 @@ let deploymentRequest name files builds routes = {
         routes = routes
     }
 
-let defaultBuilds = [
+let testBuilds = [
     { src = "*.js"; useBuilder = "@now/node" }
+    { src = "*.html"; useBuilder = "@now/static" }
+    { src = "*.css"; useBuilder = "@now/static" }
+    { src = "*.py"; useBuilder = "@now/python" }
+]
+
+let normalBuilds = [
     { src = "*.html"; useBuilder = "@now/static" }
     { src = "*.css"; useBuilder = "@now/static" }
     { src = "*.py"; useBuilder = "@now/python" }

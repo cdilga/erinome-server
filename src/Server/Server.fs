@@ -35,22 +35,46 @@ let box = tag "Box"
 let img = voidTag "Img"
 let container = tag "Container"
 let _display = attr "display"
+let linkHeadTag = voidTag "link"
 
 type ClickDeployResponse<'a> =
     | Response of 'a
     | Failure of string
 
+let generateIndexHtml name paths =
+    let markup = html [] [
+        head [] [
+            title [] [ str name ]
+            linkHeadTag [ _rel "stylesheet"; _href "style.css" ]
+        ]
+        body [] [
+            h1 [] [ str name ]
+            p [] [str "Deployed with ZEIT Now using Erinome"]
+            p [] [
+                for path in paths do
+                    yield br []
+                    yield a [ _href path ] [ str path ]
+            ]
+        ]
+    ]
+
+    { file = "index.html"; data = renderHtmlDocument markup }
+
+
+
+let cssFile = { file = "style.css"; data = "h1 {\n margin-top: 70px; \n text-align: center; \n font-size: 45px; \n} \n h1, p {\n font-family: Helvetica; \n} \n a {\n color: #0076FF; \n text-decoration: none; \n} \n p {\n text-align: center; \n font-size: 30px; \n} \n p:nth-child(3) { \n font-size: 25px; \n margin-left: 15%; \n margin-right: 15%; \n}" }
 
 let generateRequestForNotebook nbUrl = async {
     let! deploymentData = generateServerFromShareUrl nbUrl
     match deploymentData with
     | Ok (name, pyFile, paths) ->
-        let reqs = { file = "requirements.txt"; data = File.ReadAllText("pythontestserver/requirements.txt") }
-        let cows = { file = "cowsay.py"; data = File.ReadAllText("pythontestserver/cowsay.py") }
+        //let reqs = { file = "requirements.txt"; data = File.ReadAllText("pythontestserver/requirements.txt") }
+        //let cows = { file = "cowsay.py"; data = File.ReadAllText("pythontestserver/cowsay.py") }
         let server = { file = "server.py"; data = pyFile }
+        let indexFile = generateIndexHtml name paths
         printfn "PyFile: %s" pyFile
         let routes = paths |> List.map (fun path -> { src = path; dest = "server.py" })
-        let request = deploymentRequest name (server::reqs::cows::testFiles) defaultBuilds routes
+        let request = deploymentRequest name ([cssFile; indexFile; server]) normalBuilds routes
         return Ok request
     | Error er ->
         return Error er
@@ -83,6 +107,7 @@ let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
         let link =
             match deploymentResponse with
             | Ok response ->
+                printfn "Response to deploying: %A" response
                 let url = sprintf "https://%s" response.Url
                 p [] [link [ _href url] [str url]]
             | Error er ->
@@ -97,10 +122,12 @@ let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
             link
             container [] [
                 h1 [] [str "To get your colab share url" ]
+                p [] [str "Make sure you have saved and have the notebook open in DRIVE"]
+                rawText "<Img src=\"https://erinome.appspot.com/images/click_share.jpg\" />"
                 p [] [str "Click the share button"]
-                rawText "<Img src=\"https://api.checkface.ml/api/images/click_share.jpg\" />"
+                rawText "<Img src=\"https://erinome.appspot.com/images/click_share.jpg\" />"
                 p [] [str "Share, and copy link. It should look similar to https://colab.research.google.com/drive/1034rXX-xPwDbY-yvgmmXWGBBa3pE7-Wf#scrollTo=65QaPYCYBRfm"]
-                rawText "<Img src=\"https://api.checkface.ml/api/images/copy_link.jpg\" />"
+                rawText "<Img src=\"https://erinome.appspot.com/images/copy_link.jpg\" />"
 
             ]
         ]
