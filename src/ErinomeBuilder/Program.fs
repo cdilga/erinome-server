@@ -208,11 +208,11 @@ let generateServer (cells:CodeCell list) =
 
     Seq.concat [erinomeFuncSrc; userCode; handler] |> fun x -> String.Join('\n', x)
 
-let shareUrlRegex = compileRegex @"drive\/(.*?)[?#$]"
+let shareUrlRegex = compileRegex @"drive\/(.*?)(\?|#|$)"
 
 let getNotebookDownloadUri shareUrl =
     match shareUrl with
-    | Regex shareUrlRegex [ nbId ] -> Some <| sprintf "https://drive.google.com/uc?export=download&id=%s" nbId
+    | Regex shareUrlRegex [ nbId; _ ] -> Some <| sprintf "https://drive.google.com/uc?export=download&id=%s" nbId
     | _ -> None
 
 let generateServerFromShareUrl nbUrl = async {

@@ -29,6 +29,12 @@ let tests =
     let mockOptionsParser options =
         Some options
 
+    yield testList "Download URIs" [
+        testCase "Can use drive share link" <| fun _ ->
+            let url = getNotebookDownloadUri "https://colab.research.google.com/drive/1xxiljch82sNDWXqirQ9zIB1wmeBvYDvG"
+            Expect.isSome url "Should parse download uri"
+    ]
+
     yield testList "Colab form parameters" [
         testCase "No parameter" <| fun _ ->
             let line = "myVar = 145 #@thing"
@@ -103,7 +109,7 @@ let tests =
             "       if urlPath == '/add5':"
             "           global b"
             "           b = 16"
-            "           if parsedQuery['b']: b = int(parsedQuery['b'][0])"
+            "           if 'b' in parsedQuery: b = int(parsedQuery['b'][0])"
             "           add5()"
             ""
             "       message = erinomeBuffer"
