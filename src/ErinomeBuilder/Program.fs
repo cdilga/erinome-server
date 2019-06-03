@@ -91,8 +91,12 @@ let generateEndpointCode endpoint cell =
     let paramss =
         cell.Lines
         |> List.map (colabFormLine colabElementOptionsParser)
+
     let cellComment = sprintf "#Cell %d:endpoint" cell.CellNumber
-    cellComment::cell.Lines
+    let pp = endpoint.path.Replace("/", "")
+    let defin = sprintf "def %s():" pp
+    let lines = List.map (fun l -> "    " + l) cell.Lines
+    cellComment::defin::lines
 
 let cellEndpoint cell =
     cell.Lines
@@ -112,8 +116,38 @@ let getPaths cells =
     |> List.choose cellEndpoint
     |> List.map (fun e -> e.path)
 
+let genEndpoints ep = [
+    let p = ep.path
+    yield sprintf "       if urlPath == %s:" p
+    let pp = p.Replace("/", "")
+    yield sprintf "           %s()" pp
+    yield ""
+]
+
 let generateHandlerClass endpoints =
-    "asdf"
+    [
+        yield "buffer = ''"
+        yield "def disp(x):"
+        yield "    buffer = buffer + str(x)"
+        yield "from http.server import BaseHTTPRequestHandler"
+        yield "from urllib.parse import urlparse"
+        yield "class handler(BaseHTTPRequestHandler):"
+        yield ""
+        yield "   def do_GET(self):"
+        yield "       buffer = ''"
+        yield "       self.send_response(200)"
+        yield "       self.send_header('Content-type','text/plain')"
+        yield "       self.end_headers()"
+        yield "       parsed = urlparse(self.path)"
+        yield "       urlPath = parsed.path"
+        for ep in endpoints do
+            for s in genEndpoints ep do
+                yield s
+        yield "       # message = cow.Cowacter().milk('Get from: ' + str(urlPath))"
+        yield "       message = buffer"
+        yield "       self.wfile.write(message.encode())"
+        yield "       return"
+    ]
 
 
 let generateServer (cells:CodeCell list) =
@@ -150,20 +184,20 @@ let generateServerFromShareUrl nbUrl = async {
         return Error "Invalid drive share url - make sure it is saved on google drive"
 }
 
-let main argv =
-    let ret =
-        match List.ofArray argv with
-        | [] ->
-            printfn "Please provide file name of notebook"
-            1
-        | uri::[] ->
-            Async.RunSynchronously <| useNotebook uri
-        | _ ->
-            printfn "Should only have one argument"
-            2
+// let main argv =
+//     let ret =
+//         match List.ofArray argv with
+//         | [] ->
+//             printfn "Please provide file name of notebook"
+//             1
+//         | uri::[] ->
+//             Async.RunSynchronously <| useNotebook uri
+//         | _ ->
+//             printfn "Should only have one argument"
+//             2
 
-    printfn "Return code: %A - Press any key to exit" ret
-    System.Console.ReadKey() |> ignore
-    ret
+//     printfn "Return code: %A - Press any key to exit" ret
+//     System.Console.ReadKey() |> ignore
+//     ret
 
 let beHappy a = a + 5
