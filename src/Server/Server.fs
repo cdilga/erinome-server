@@ -49,7 +49,14 @@ let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
         let! deploymentResponse = task {
             if body.Action = "deploy"
             then
-                let! b =  startAsTask <| doDeployment body.Token "g-deployment-test" (reqs::cows::testFiles) defaultBuilds
+                let routes = [
+                    { src = "/saycow"; dest = "/cowsay.py" }
+                    { src = "/cowsay"; dest = "/cowsay.py" }
+                    { src = "/cowsay/stuff/([^/]+)"; dest = "/cowsay.py" }
+
+                ]
+                let request = deploymentRequest "g-deployment-test" (reqs::cows::testFiles) defaultBuilds routes
+                let! b =  startAsTask <| doDeployment body.Token request
                 return Some b
             else
                 return None
@@ -63,7 +70,6 @@ let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
 
         printfn "Body: %A" body
         let response = page [] [
-            p [] [str (sprintf "Counter: %i" counterVal)]
             button [_action "deploy"] [str (sprintf "Deploy a thing")]
             button [_action "counter"] [str (sprintf "Count a thing")]
             p [] [str (sprintf "Email: %s" body.User.Email)]

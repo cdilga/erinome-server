@@ -23,18 +23,25 @@ type BuildObj = {
     useBuilder: string
 }
 
+type ZeitRoute = {
+    src: string
+    dest: string
+}
+
 type DeploymentRequest = {
     name: string
     version: int
     files: InlineFile list
     builds: BuildObj list
+    routes: ZeitRoute list
 }
 
-let deploymentRequest name files builds = {
+let deploymentRequest name files builds routes = {
         name = name
         version = 2
         files = files
         builds = builds
+        routes = routes
     }
 
 let defaultBuilds = [
@@ -51,8 +58,7 @@ let testFiles = [
     { file = "date.js"; data = "module.exports = (req, res) => {\n  res.end(`The time is ${new Date()}`)\n}" }
 ]
 
-let doDeployment token name files builds = job {
-    let request = deploymentRequest name files builds
+let doDeployment token request = job {
     let bodyStr = Json.serialize request
     use! response =
         Request.createUrl Post "https://api.zeit.co/v9/now/deployments"

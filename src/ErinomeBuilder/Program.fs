@@ -104,6 +104,9 @@ let generateCode cell =
     | Some endpoint ->
         generateEndpointCode endpoint cell
 
+let generateHandlerClass endpoints =
+    "asdf"
+
 
 let generateServer (cells:CodeCell list) =
     cells

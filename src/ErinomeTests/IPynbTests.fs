@@ -75,6 +75,18 @@ let tests =
             "a = 5"
             "b = 16 #@param {type:\"slider\", min:10, max:100, step:4}"
             "display(a + b)"
+            ""
+            "#GeneratedHandler"
+            "from http.server import BaseHTTPRequestHandler"
+            "from urllib.parse import urlparse"
+            ""
+            "class handler(BaseHTTPRequestHandler):"
+            "  def go_GET(self):"
+            "    self.send_response(200)"
+            "    self.send_header('Content-type','text/plain')"
+            "    self.end_headers()"
+            "    message = 'hello from erinome"
+            "    self.wfile.write(message.encode())"
         ])
 
 
