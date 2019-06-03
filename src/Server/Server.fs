@@ -41,16 +41,20 @@ type ClickDeployResponse<'a> =
     | Failure of string
 
 
-let generateRequestForNotebook nbUrl =
-    let downloadUri = getNotebookDownloadUri nbUrl
-    match downloadUri with
-    | Some uri ->
+let generateRequestForNotebook nbUrl = async {
+    let! deploymentData = generateServerFromShareUrl nbUrl
+    match deploymentData with
+    | Ok (name, pyFile, paths) ->
         let reqs = { file = "requirements.txt"; data = File.ReadAllText("pythontestserver/requirements.txt") }
         let cows = { file = "cowsay.py"; data = File.ReadAllText("pythontestserver/cowsay.py") }
-        let request = deploymentRequest "g-deployment-test" (reqs::cows::testFiles) defaultBuilds routes
-        Ok request
-    | None ->
-        Error "Invalid drive share url - make sure it is saved on google drive"
+        let server = { file = "server.py"; data = pyFile }
+        printfn "PyFile: %s" pyFile
+        let routes = paths |> List.map (fun path -> { src = path; dest = "server.py" })
+        let request = deploymentRequest name (server::reqs::cows::testFiles) defaultBuilds routes
+        return Ok request
+    | Error er ->
+        return Error er
+}
 
 let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
     task {
@@ -62,11 +66,14 @@ let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
         let! deploymentResponse = task {
             match body.Action, body.ClientState.NotebookUrl with
             | "deploy", Some nbUrl ->
-                    let request = generateRequestForNotebook nbUrl
+                    let! request = generateRequestForNotebook nbUrl
                     match request with
                     | Ok req ->
-                        let! b =  startAsTask <| doDeployment body.Token req
-                        return Ok b
+                        if false
+                        then return Error "Just testing"
+                        else
+                            let! b =  startAsTask <| doDeployment body.Token req
+                            return Ok b
                     | Error er ->
                         return Error er
             | _ ->
@@ -81,9 +88,11 @@ let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
             | Error er ->
                  p [] [ str er]
 
+        let driveUrl = body.ClientState.NotebookUrl |> Option.defaultValue ""
+
         printfn "Body: %A" body
         let response = page [] [
-            input [_label "Colaboratory Google Drive share url"; _name "notebookUrl" ] []
+            input [_label "Colaboratory Google Drive share url"; _name "notebookUrl"; _value driveUrl ] []
             button [_action "deploy"] [str (sprintf "Deploy Notebook")]
             link
             container [] [

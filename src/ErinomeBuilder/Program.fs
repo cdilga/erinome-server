@@ -15,9 +15,12 @@ type CodeCell = {
     CellNumber: int
 }
 
-type Endpoint =
-    | Get of string
-    | Post of string
+type EndpointKind = Get | Post
+
+type Endpoint = {
+    path: string
+    kind: EndpointKind
+}
 
 type SliderEl = {
     min: int
@@ -58,8 +61,8 @@ let (|Regex|_|) (regex:Regex) input =
 
 let lineEndpoint (line:string) =
     match line.TrimStart() with
-    | Prefix "#@GET" path -> Some (Get (path.Trim()))
-    | Prefix "#@POST" path -> Some (Post (path.Trim()))
+    | Prefix "#@GET" path -> Some { path = (path.Trim()); kind = Get }
+    | Prefix "#@POST" path -> Some { path = (path.Trim()); kind = Post }
     | _ -> None
 
 let colabElementOptionsParser options =
@@ -104,6 +107,11 @@ let generateCode cell =
     | Some endpoint ->
         generateEndpointCode endpoint cell
 
+let getPaths cells =
+    cells
+    |> List.choose cellEndpoint
+    |> List.map (fun e -> e.path)
+
 let generateHandlerClass endpoints =
     "asdf"
 
@@ -115,25 +123,6 @@ let generateServer (cells:CodeCell list) =
     |> List.collect id
     |> fun x -> String.Join('\n', x)
 
-
-let useNotebook uri = async {
-    printfn "Loading notebook from uri: %s" uri
-    let! np = Ipynb.AsyncLoad(uri)
-    let name = np.Metadata.Colab.Name
-    printfn "Notebook name: %s" name
-
-    let cells =
-        List.ofArray np.Cells
-        |> List.where (fun c -> c.CellType = "code")
-        |> List.mapi (fun i c -> { Lines = List.ofArray c.Source; CellNumber = i })
-
-    let server = generateServer cells
-    //printf "Cells: %A" cells
-
-
-    return 0
-}
-
 let shareUrlRegex = compileRegex @"drive\/(.*?)[?#$]"
 
 let getNotebookDownloadUri shareUrl =
@@ -141,6 +130,25 @@ let getNotebookDownloadUri shareUrl =
     | Regex shareUrlRegex [ nbId ] -> Some <| sprintf "https://drive.google.com/uc?export=download&id=%s" nbId
     | _ -> None
 
+let generateServerFromShareUrl nbUrl = async {
+    let downloadUri = getNotebookDownloadUri nbUrl
+    match downloadUri with
+    | Some uri ->
+        let! np = Ipynb.AsyncLoad(uri)
+        let name = np.Metadata.Colab.Name
+
+        let cells =
+            List.ofArray np.Cells
+            |> List.where (fun c -> c.CellType = "code")
+            |> List.mapi (fun i c -> { Lines = List.ofArray c.Source; CellNumber = i })
+
+        let server = generateServer cells
+        let paths = getPaths cells
+
+        return Ok (name, server, paths)
+    | None ->
+        return Error "Invalid drive share url - make sure it is saved on google drive"
+}
 
 let main argv =
     let ret =
