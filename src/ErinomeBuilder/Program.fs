@@ -134,7 +134,12 @@ let useNotebook uri = async {
     return 0
 }
 
+let shareUrlRegex = compileRegex @"drive\/(.*?)[?#$]"
 
+let getNotebookDownloadUri shareUrl =
+    match shareUrl with
+    | Regex shareUrlRegex [ nbId ] -> Some <| sprintf "https://drive.google.com/uc?export=download&id=%s" nbId
+    | _ -> None
 
 
 let main argv =

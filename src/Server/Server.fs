@@ -28,55 +28,72 @@ type RequestBody = JsonProvider<"response.json", SampleIsList = true>
 let page = tag "Page"
 let link = tag "Link"
 let p = tag "P"
+let h1 = tag "H1"
 let button = tag "Button"
 let input = tag "Input"
 let box = tag "Box"
-let img = tag "Image"
+let img = voidTag "Img"
+let container = tag "Container"
 let _display = attr "display"
+
+type ClickDeployResponse<'a> =
+    | Response of 'a
+    | Failure of string
+
+
+let generateRequestForNotebook nbUrl =
+    let downloadUri = getNotebookDownloadUri nbUrl
+    match downloadUri with
+    | Some uri ->
+        let reqs = { file = "requirements.txt"; data = File.ReadAllText("pythontestserver/requirements.txt") }
+        let cows = { file = "cowsay.py"; data = File.ReadAllText("pythontestserver/cowsay.py") }
+        let request = deploymentRequest "g-deployment-test" (reqs::cows::testFiles) defaultBuilds routes
+        Ok request
+    | None ->
+        Error "Invalid drive share url - make sure it is saved on google drive"
 
 let handleRequest : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) ->
     task {
         let! bodyjson = ctx.ReadBodyFromRequestAsync()
         let body = RequestBody.Parse(bodyjson)
-        let counterVal = Option.defaultValue 15 body.ClientState.Counter
-        printfn "%A" body.ClientState.Counter
 
-
-        let reqs = { file = "requirements.txt"; data = File.ReadAllText("pythontestserver/requirements.txt") }
-        let cows = { file = "cowsay.py"; data = File.ReadAllText("pythontestserver/cowsay.py") }
 
 
         let! deploymentResponse = task {
-            if body.Action = "deploy"
-            then
-                let routes = [
-                    { src = "/saycow"; dest = "/cowsay.py" }
-                    { src = "/cowsay"; dest = "/cowsay.py" }
-                    { src = "/cowsay/stuff/([^/]+)"; dest = "/cowsay.py" }
-
-                ]
-                let request = deploymentRequest "g-deployment-test" (reqs::cows::testFiles) defaultBuilds routes
-                let! b =  startAsTask <| doDeployment body.Token request
-                return Some b
-            else
-                return None
+            match body.Action, body.ClientState.NotebookUrl with
+            | "deploy", Some nbUrl ->
+                    let request = generateRequestForNotebook nbUrl
+                    match request with
+                    | Ok req ->
+                        let! b =  startAsTask <| doDeployment body.Token req
+                        return Ok b
+                    | Error er ->
+                        return Error er
+            | _ ->
+                return Error "Click to make a deployment"
         }
 
         let link =
-            deploymentResponse
-            |> Option.map (fun b -> sprintf "https://%s" b.Url)
-            |> Option.map (fun url -> p [] [link [ _href url] [str url]])
-            |> Option.defaultWith (fun _ -> p [] [ str "Click button to make a new deployment"])
+            match deploymentResponse with
+            | Ok response ->
+                let url = sprintf "https://%s" response.Url
+                p [] [link [ _href url] [str url]]
+            | Error er ->
+                 p [] [ str er]
 
         printfn "Body: %A" body
         let response = page [] [
-            button [_action "deploy"] [str (sprintf "Deploy a thing")]
-            button [_action "counter"] [str (sprintf "Count a thing")]
-            p [] [str (sprintf "Email: %s" body.User.Email)]
-            p [] [str (sprintf "ID: %s" body.User.Id)]
-            p [] [str (sprintf "Username: %s" body.User.Username)]
+            input [_label "Colaboratory Google Drive share url"; _name "notebookUrl" ] []
+            button [_action "deploy"] [str (sprintf "Deploy Notebook")]
             link
-            box [_display "none"] [input [_name "counter"; _type "hidden"; _value (string (counterVal + 1))] []]
+            container [] [
+                h1 [] [str "To get your colab share url" ]
+                p [] [str "Click the share button"]
+                rawText "<Img src=\"https://api.checkface.ml/api/images/click_share.jpg\" />"
+                p [] [str "Share, and copy link. It should look similar to https://colab.research.google.com/drive/1034rXX-xPwDbY-yvgmmXWGBBa3pE7-Wf#scrollTo=65QaPYCYBRfm"]
+                rawText "<Img src=\"https://api.checkface.ml/api/images/copy_link.jpg\" />"
+
+            ]
         ]
 
         return! ctx.WriteTextAsync <| renderHtmlNode response
