@@ -22,7 +22,7 @@
 {
     "query": {},
     "action": "view",
-    "clientState": { "counter": 42 },
+    "clientState": { "notebookUrl": "https://colab.research.google.com/drive/1034rXX-xPwDbY-yvgmmXWGBBa3pE7-Wf#scrollTo=65QaPYCYBRfm" },
     "token": "token",
     "slug": "my-app",
     "configurationId": "confId",

@@ -1,7 +1,7 @@
 {
 	"name": "SAFE",
 	"dockerFile": "Dockerfile",
-	"appPort": [8080, 5005],
+	"appPort": [8080, 8085],
 	"extensions": [
 		"ionide.ionide-fsharp",
         "ms-vscode.csharp",

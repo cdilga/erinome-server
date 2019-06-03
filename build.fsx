@@ -14,6 +14,9 @@ open Fake.IO
 
 let serverPath = Path.getFullName "./src/Server"
 let clientPath = Path.getFullName "./src/Client"
+let erinomeBuilderPath = Path.getFullName "./src/ErinomeBuilder"
+let erinomeTestsPath = Path.getFullName "./src/ErinomeTests"
+
 let clientDeployPath = Path.combine clientPath "deploy"
 let deployDir = Path.getFullName "./deploy"
 
@@ -30,6 +33,7 @@ let platformTool tool winTool =
 
 let nodeTool = platformTool "node" "node.exe"
 let yarnTool = platformTool "yarn" "yarn.cmd"
+let gcloudTool = platformTool "gcloud" "gcloud.cmd"
 
 let runTool cmd args workingDir =
     let arguments = args |> String.split ' ' |> Arguments.OfArgs
@@ -70,6 +74,8 @@ Target.create "InstallClient" (fun _ ->
 )
 
 Target.create "Build" (fun _ ->
+    runDotNet "build" erinomeBuilderPath
+    runDotNet "build" erinomeTestsPath
     runDotNet "build" serverPath
     runTool yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
 )
@@ -100,6 +106,16 @@ Target.create "Run" (fun _ ->
     |> ignore
 )
 
+Target.create "WatchTests" (fun _ ->
+    let tests = async {
+        runDotNet "watch run -- WatchTests" erinomeTestsPath
+    }
+
+    tests
+    |> Async.RunSynchronously
+    |> ignore
+)
+
 let buildDocker tag =
     let args = sprintf "build -t %s ." tag
     runTool "docker" args "."
@@ -115,8 +131,8 @@ Target.create "Bundle" (fun _ ->
     Shell.copyDir publicDir clientDeployPath FileFilter.allFiles
 )
 
-let dockerUser = "safe-template"
-let dockerImageName = "safe-template"
+let dockerUser = "cdilga"
+let dockerImageName = "erinome-server"
 let dockerFullName = sprintf "%s/%s" dockerUser dockerImageName
 
 Target.create "Docker" (fun _ ->
@@ -126,6 +142,9 @@ Target.create "Docker" (fun _ ->
 
 
 
+Target.create "Deploy" (fun _ ->
+    runTool gcloudTool "app deploy --quiet" "."
+)
 
 
 open Fake.Core.TargetOperators
@@ -136,9 +155,14 @@ open Fake.Core.TargetOperators
     ==> "Bundle"
     ==> "Docker"
 
+"Bundle"
+    ==> "Deploy"
 
 "Clean"
     ==> "InstallClient"
     ==> "Run"
+
+"Clean"
+    ==> "WatchTests"
 
 Target.runOrDefaultWithArguments "Build"
